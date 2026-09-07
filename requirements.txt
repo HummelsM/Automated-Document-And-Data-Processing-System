@@ -1,3 +1,6 @@
-flask
+Flask
 pandas
+numpy
+matplotlib
+openpyxl
 gunicorn
