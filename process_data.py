@@ -1,8 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
-from io import StringIO
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import uuid
@@ -11,12 +8,6 @@ import os
 
 app = Flask(__name__)
 
-
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({from flask import Flask, request, jsonify, send_from_directory
-
-app = Flask(__name__)
 
 # ============================================================
 # CONFIGURATION
@@ -31,6 +22,7 @@ BASE_OUTPUT_DIR.mkdir(exist_ok=True)
 # ============================================================
 
 def process_sales_data(data):
+
     """
     Process sales data and return structured results
     suitable for Make, Zapier, Gemini, etc.
@@ -54,7 +46,7 @@ def process_sales_data(data):
     df.columns = (
         df.columns
         .str.strip()
-        .str.replace(" ", "_")
+        .str.replace(" ", "_", regex=False)
     )
 
     # --------------------------------------------------------
@@ -64,6 +56,7 @@ def process_sales_data(data):
     required_columns = [
         "Order_ID",
         "Date",
+        "Customer_ID",
         "Product",
         "Category",
         "Region",
@@ -82,6 +75,7 @@ def process_sales_data(data):
     ]
 
     if missing_columns:
+
         raise ValueError(
             f"Missing required columns: {missing_columns}"
         )
@@ -268,6 +262,11 @@ def process_sales_data(data):
         subset=["Date"]
     )
 
+    if df.empty:
+        raise ValueError(
+            "No valid records remain after cleaning."
+        )
+
     # ========================================================
     # KPI ANALYSIS
     # ========================================================
@@ -379,16 +378,19 @@ def process_sales_data(data):
     # GENERATE CHARTS
     # ========================================================
 
-    # Unique ID prevents different automation runs
-    # from overwriting each other's files.
-
     run_id = str(uuid.uuid4())
 
-    run_dir = BASE_OUTPUT_DIR / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = (
+        BASE_OUTPUT_DIR / run_id
+    )
+
+    run_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
 
     # --------------------------------------------------------
-    # Product chart
+    # Sales by Product
     # --------------------------------------------------------
 
     plt.figure(figsize=(10, 6))
@@ -415,7 +417,7 @@ def process_sales_data(data):
     plt.close()
 
     # --------------------------------------------------------
-    # Region chart
+    # Sales by Region
     # --------------------------------------------------------
 
     plt.figure(figsize=(8, 5))
@@ -444,7 +446,7 @@ def process_sales_data(data):
     plt.close()
 
     # --------------------------------------------------------
-    # Daily trend
+    # Daily Sales Trend
     # --------------------------------------------------------
 
     daily_sales = (
@@ -476,7 +478,7 @@ def process_sales_data(data):
     plt.close()
 
     # --------------------------------------------------------
-    # Category chart
+    # Sales by Category
     # --------------------------------------------------------
 
     plt.figure(figsize=(9, 5))
@@ -515,18 +517,19 @@ def process_sales_data(data):
         "run_id": run_id,
 
         # ----------------------------------------------------
-        # Data quality
+        # Data Quality
         # ----------------------------------------------------
 
         "data_quality": {
 
-            "rows_received": original_rows,
+            "rows_received":
+                original_rows,
 
-            "rows_processed": len(df),
+            "rows_processed":
+                len(df),
 
-            "rows_removed": (
-                original_rows - len(df)
-            ),
+            "rows_removed":
+                original_rows - len(df),
 
             "duplicates_removed":
                 duplicates_removed,
@@ -576,7 +579,7 @@ def process_sales_data(data):
         },
 
         # ----------------------------------------------------
-        # Top performers
+        # Top Performers
         # ----------------------------------------------------
 
         "top_performers": {
@@ -598,26 +601,35 @@ def process_sales_data(data):
         },
 
         # ----------------------------------------------------
-        # Detailed breakdowns
+        # Detailed Breakdowns
         # ----------------------------------------------------
 
         "sales_by_product": {
-            str(k): round(float(v), 2)
+
+            str(k):
+                round(float(v), 2)
+
             for k, v in product_sales.items()
         },
 
         "sales_by_region": {
-            str(k): round(float(v), 2)
+
+            str(k):
+                round(float(v), 2)
+
             for k, v in region_sales.items()
         },
 
         "sales_by_category": {
-            str(k): round(float(v), 2)
+
+            str(k):
+                round(float(v), 2)
+
             for k, v in category_sales.items()
         },
 
         # ----------------------------------------------------
-        # Reporting period
+        # Reporting Period
         # ----------------------------------------------------
 
         "reporting_period": {
@@ -630,7 +642,7 @@ def process_sales_data(data):
         },
 
         # ----------------------------------------------------
-        # Generated files
+        # Generated Charts
         # ----------------------------------------------------
 
         "charts": {
@@ -653,10 +665,13 @@ def process_sales_data(data):
 
 
 # ============================================================
-# API ENDPOINT
+# PROCESS SALES API
 # ============================================================
 
-@app.route("/api/process-sales", methods=["POST"])
+@app.route(
+    "/api/process-sales",
+    methods=["POST"]
+)
 def process_sales():
 
     try:
@@ -664,22 +679,21 @@ def process_sales():
         payload = request.get_json()
 
         if not payload:
+
             return jsonify({
                 "status": "error",
                 "message": "No JSON data received."
             }), 400
 
-        # ----------------------------------------------------
-        # Accept either:
+        # Accept:
         #
         # {
         #     "records": [...]
         # }
         #
-        # or directly:
+        # or:
         #
         # [...]
-        # ----------------------------------------------------
 
         if isinstance(payload, dict):
 
@@ -690,14 +704,19 @@ def process_sales():
             records = payload
 
         if not records:
+
             return jsonify({
                 "status": "error",
                 "message": "No records were provided."
             }), 400
 
-        result = process_sales_data(records)
+        result = process_sales_data(
+            records
+        )
 
-        return jsonify(result), 200
+        return jsonify(
+            result
+        ), 200
 
     except Exception as e:
 
@@ -711,10 +730,18 @@ def process_sales():
 # CHART FILE ENDPOINT
 # ============================================================
 
-@app.route("/charts/<run_id>/<filename>")
-def get_chart(run_id, filename):
+@app.route(
+    "/charts/<run_id>/<filename>",
+    methods=["GET"]
+)
+def get_chart(
+    run_id,
+    filename
+):
 
-    run_dir = BASE_OUTPUT_DIR / run_id
+    run_dir = (
+        BASE_OUTPUT_DIR / run_id
+    )
 
     return send_from_directory(
         run_dir,
@@ -726,26 +753,41 @@ def get_chart(run_id, filename):
 # HEALTH CHECK
 # ============================================================
 
-@app.route("/")
+@app.route(
+    "/",
+    methods=["GET"]
+)
 def home():
 
     return jsonify({
+
         "status": "online",
-        "service": "Automated Sales Data Processing API"
+
+        "service":
+            "Automated Sales Data Processing API",
+
+        "endpoint":
+            "/api/process-sales"
     })
 
 
-@app.route("/test")
+@app.route(
+    "/test",
+    methods=["GET"]
+)
 def test():
 
     return jsonify({
+
         "status": "success",
-        "message": "API is working."
+
+        "message":
+            "API is working."
     })
 
 
 # ============================================================
-# RUN
+# RUN APPLICATION
 # ============================================================
 
 if __name__ == "__main__":
@@ -761,132 +803,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port
     )
-
-        "status": "running",
-        "service": "Automated Data Processing API"
-    })
-
-
-@app.route("/process-data", methods=["POST"])
-def process_data():
-
-    try:
-        data = request.get_json()
-
-        if not data:
-            return jsonify({
-                "error": "Missing JSON payload"
-            }), 400
-
-        csv_content = data.get("csv_data")
-
-        if not csv_content:
-            return jsonify({
-                "error": "csv_data field is required"
-            }), 400
-
-        # -----------------------------
-        # Load CSV into DataFrame
-        # -----------------------------
-        df = pd.read_csv(StringIO(csv_content))
-
-        original_rows = len(df)
-
-        # -----------------------------
-        # Missing Values
-        # -----------------------------
-        missing_customer_ids = df["Customer_ID"].isna().sum()
-        missing_revenue = df["Revenue"].isna().sum()
-
-        # -----------------------------
-        # Duplicate Detection
-        # -----------------------------
-        duplicate_rows = df.duplicated().sum()
-
-        # -----------------------------
-        # Clean Data
-        # -----------------------------
-        df["Region"] = (
-            df["Region"]
-            .astype(str)
-            .str.strip()
-            .str.title()
-        )
-
-        # Fill missing revenue with 0
-        df["Revenue"] = pd.to_numeric(
-            df["Revenue"],
-            errors="coerce"
-        ).fillna(0)
-
-        # Remove duplicates
-        df = df.drop_duplicates()
-
-        cleaned_rows = len(df)
-
-        # -----------------------------
-        # KPIs
-        # -----------------------------
-        total_revenue = round(df["Revenue"].sum(), 2)
-
-        average_revenue = round(
-            df["Revenue"].mean(),
-            2
-        )
-
-        unique_customers = (
-            df["Customer_Name"]
-            .nunique()
-        )
-
-        # -----------------------------
-        # Revenue By Region
-        # -----------------------------
-        revenue_by_region = (
-            df.groupby("Region")["Revenue"]
-            .sum()
-            .round(2)
-            .to_dict()
-        )
-
-        # Highest Revenue Region
-        top_region = max(
-            revenue_by_region,
-            key=revenue_by_region.get
-        )
-
-        # -----------------------------
-        # Response
-        # -----------------------------
-        response = {
-            "status": "success",
-
-            "data_quality": {
-                "original_rows": int(original_rows),
-                "cleaned_rows": int(cleaned_rows),
-                "duplicate_rows": int(duplicate_rows),
-                "missing_customer_ids": int(missing_customer_ids),
-                "missing_revenue": int(missing_revenue)
-            },
-
-            "kpis": {
-                "total_revenue": total_revenue,
-                "average_revenue": average_revenue,
-                "unique_customers": int(unique_customers),
-                "top_region": top_region
-            },
-
-            "revenue_by_region": revenue_by_region
-        }
-
-        return jsonify(response), 200
-
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
