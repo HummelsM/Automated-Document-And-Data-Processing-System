@@ -1,6 +1,13 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 from io import StringIO
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+import uuid
+import os
+
 
 app = Flask(__name__)
 
@@ -8,12 +15,6 @@ app = Flask(__name__)
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({from flask import Flask, request, jsonify, send_from_directory
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
-import uuid
-import os
 
 app = Flask(__name__)
 
