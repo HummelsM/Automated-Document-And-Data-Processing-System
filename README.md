@@ -1,3 +1,4 @@
+<img width="2840" height="888" alt="AI Data Processing and Documentation System" src="https://github.com/user-attachments/assets/7522a743-da66-4a28-b151-8cb507b9c5f4" />
 # Automated-Data-Processing-Extraction-and-Documentation-System
 
 An end-to-end business automation system that transforms raw sales data into a professional, AI-powered business report.
